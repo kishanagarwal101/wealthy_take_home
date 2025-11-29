@@ -1,6 +1,6 @@
 # Async Prime Generator System
 
-This project implements an asynchronous prime number generator using FastAPI, Celery, and Redis.
+This project implements an asynchronous prime number generator using FastAPI, Celery, and Redis, with comprehensive observability (OpenTelemetry, VictoriaMetrics, Grafana) and load testing capabilities (Locust).
 
 ## Quick Start with Docker (Recommended)
 
@@ -19,9 +19,13 @@ This project implements an asynchronous prime number generator using FastAPI, Ce
     ```
 
     This will start:
-    *   Redis server
-    *   FastAPI application (available at `http://localhost:8000`)
-    *   Celery worker
+    *   **Redis** - Message broker and result backend for Celery
+    *   **FastAPI application** - Available at `http://localhost:8000`
+    *   **Celery worker** - Processes prime generation tasks asynchronously
+    *   **OpenTelemetry Collector** - Collects traces and metrics
+    *   **VictoriaMetrics** - Time-series database for metrics (available at `http://localhost:8428`)
+    *   **Grafana** - Metrics visualization dashboard (available at `http://localhost:3000`, login: `admin/admin`)
+    *   **Locust** - Load testing tool (available at `http://localhost:8089`)
 
 3.  To run in detached mode (background):
 
@@ -61,6 +65,59 @@ Once all services are running:
     1.  Use the `request_id` obtained from the `/generate` endpoint.
     2.  Access `http://localhost:8000/status/{your_request_id}` in your browser or through the docs to check the task's status.
     3.  Initially, it will show `"status": "pending"`. Once the Celery worker completes the task, it will show `"status": "complete"` with the `result`.
+
+### Observability and Monitoring
+
+#### Grafana Dashboards
+
+1.  Access Grafana at `http://localhost:3000`
+2.  Login with credentials:
+    *   Username: `admin`
+    *   Password: `admin`
+3.  Navigate to **Dashboards** → **Prime Generator Dashboard** to view:
+    *   API request metrics (latency, throughput)
+    *   Celery task duration metrics (p50, p95, p99)
+    *   Custom prime task duration histogram with fine-grained millisecond buckets
+    *   Request rates and error rates
+
+#### VictoriaMetrics
+
+VictoriaMetrics is available at `http://localhost:8428` and provides a Prometheus-compatible API for querying metrics directly.
+
+### Load Testing with Locust
+
+1.  Access Locust Web UI at `http://localhost:8089`
+2.  Configure your load test:
+    *   **Number of users:** Total concurrent users (start with 10-20)
+    *   **Spawn rate:** Users per second to add (e.g., 2 users/sec)
+    *   **Host:** Should be pre-filled as `http://api:8000`
+3.  Click **"Start swarming"** to begin the load test
+4.  Monitor results:
+    *   **Locust UI:** Real-time statistics, response times, failure rates
+    *   **Grafana:** Watch API latency, task duration, and throughput metrics update in real-time
+    *   **Docker logs:** `docker-compose logs -f api celery-worker` to see application logs
+
+#### Recommended Test Scenarios
+
+*   **Light Load (Baseline):**
+    *   Users: 10
+    *   Spawn rate: 2/sec
+    *   Duration: 2-3 minutes
+
+*   **Medium Load:**
+    *   Users: 50
+    *   Spawn rate: 5/sec
+    *   Duration: 5 minutes
+
+*   **Stress Test:**
+    *   Users: 100+
+    *   Spawn rate: 10/sec
+    *   Duration: 5-10 minutes
+
+The Locust test simulates realistic user behavior:
+*   Users generating prime tasks with varying sizes (small: 10-50, medium: 100-500, large: 1000-5000 primes)
+*   Users checking task status
+*   Realistic wait times between actions (1-3 seconds)
 
 ---
 
@@ -119,3 +176,19 @@ Once all three components are running:
     1.  Use the `request_id` obtained from the `/generate` endpoint.
     2.  Access `http://127.0.0.1:8000/status/{your_request_id}` in your browser or through the docs to check the task's status.
     3.  Initially, it will show `"status": "pending"`. Once the Celery worker completes the task, it will show `"status": "complete"` with the `result`.
+
+---
+
+## Architecture
+
+The system consists of:
+
+*   **FastAPI** - REST API for generating primes and checking task status
+*   **Celery** - Asynchronous task queue for CPU-intensive prime generation
+*   **Redis** - Message broker and result backend for Celery
+*   **OpenTelemetry** - Distributed tracing and metrics collection
+*   **VictoriaMetrics** - Time-series database for storing metrics
+*   **Grafana** - Visualization and monitoring dashboards
+*   **Locust** - Load testing framework
+
+All components are containerized and orchestrated using Docker Compose.

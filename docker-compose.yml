@@ -78,6 +78,19 @@ services:
         condition: service_started
     command: celery -A api.celery_app worker --loglevel=info
 
+  locust:
+    image: locustio/locust:latest
+    ports:
+      - "8089:8089"
+    volumes:
+      - ./load-test:/mnt/locust
+    working_dir: /mnt/locust
+    entrypoint: ["locust"]
+    command: ["-f", "locustfile.py", "--host=http://api:8000"]
+    depends_on:
+      api:
+        condition: service_started
+
 volumes:
   redis_data:
   victoria_metrics_data:
