@@ -22,7 +22,35 @@ services:
       - "4317:4317"   
       - "4318:4318"   
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+      victoria-metrics:
+        condition: service_started
+
+  victoria-metrics:
+    image: victoriametrics/victoria-metrics:latest
+    ports:
+      - "8428:8428"
+    command:
+      - "--storageDataPath=/victoria-metrics-data"
+      - "--httpListenAddr=:8428"
+    volumes:
+      - victoria_metrics_data:/victoria-metrics-data
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      victoria-metrics:
+        condition: service_started
 
   api:
     build: .
@@ -52,4 +80,6 @@ services:
 
 volumes:
   redis_data:
+  victoria_metrics_data:
+  grafana_data:
 
