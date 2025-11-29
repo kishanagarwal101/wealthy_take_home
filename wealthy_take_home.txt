@@ -1,0 +1,8 @@
+1st api - take input n , calculates n primes 
+        returns req id, 
+
+2nd - status api - returns pending if the og req is pending otherwise entire list
+
+using redis, celery, opentelemetry, victoriametrics, grafana , load test - locust
+
+github repo - docker, fastapi.
