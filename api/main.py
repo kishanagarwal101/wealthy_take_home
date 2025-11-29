@@ -2,11 +2,32 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
 import uuid
+import os
+
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.resources import Resource
 
 from .celery_app import celery_app
 from .prime_logic import prime_task
 
+# Initialize OpenTelemetry
+resource = Resource.create({"service.name": "prime-generator-api"})
+trace.set_tracer_provider(TracerProvider(resource=resource))
+
+# Configure OTLP exporter
+otlp_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector:4317")
+otlp_exporter = OTLPSpanExporter(endpoint=otlp_endpoint, insecure=True)
+span_processor = BatchSpanProcessor(otlp_exporter)
+trace.get_tracer_provider().add_span_processor(span_processor)
+
 app = FastAPI()
+
+# Instrument FastAPI
+FastAPIInstrumentor.instrument_app(app)
 
 class GenerateResponse(BaseModel):
     request_id: str
