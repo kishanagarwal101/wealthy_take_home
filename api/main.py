@@ -1,9 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from typing import List
 import uuid
 import os
 
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from opentelemetry import trace, metrics
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -34,6 +36,8 @@ metrics.set_meter_provider(MeterProvider(resource=resource, metric_readers=[metr
 
 app = FastAPI()
 
+templates = Jinja2Templates(directory="api/templates")
+
 # Instrument FastAPI
 FastAPIInstrumentor.instrument_app(app)
 
@@ -44,9 +48,9 @@ class StatusResponse(BaseModel):
     status: str
     result: List[int] | None = None
     
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/generate", response_model=GenerateResponse)
 async def generate_primes(n: int):
